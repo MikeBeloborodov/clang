@@ -24,8 +24,7 @@ void delete_linked_list(struct LinkedList* list, int target);
 int is_in_linked_list(struct LinkedList* list, int target);
 void replace_in_linked_list(struct LinkedList* list, int target, int newValue);
 struct LinkedList* construct_linked_list (int *arr, int size);
-void free_linked_list(struct LinkedList* list);
 void add_one_to_linked_list(struct Node* n);
-void handle_error(char str[]);
+int handle_error(char str[]);
 
 #endif // LINKED_LIST_H

@@ -7,12 +7,13 @@ int main() {
     size_t size = sizeof(arr) / sizeof(arr[0]);
     struct LinkedList* list = construct_linked_list(arr, size);
     if (list == NULL) {
-        handle_error("could not create linked list");
+        return handle_error("could not create linked list");
     }
 
     int errAddToList = add_to_linked_list(list, 10);
     if (errAddToList != 0) {
-        handle_error("could not add to the linked list");
+        free_linked_list(list);
+        return handle_error("could not add to the linked list");
     }
 
     int target = 44;
@@ -29,6 +30,5 @@ int main() {
     list->delete_in_list(list, 5);
     list->print_list(list);
     free_linked_list(list);
-    free(list);
     return 0;
 }

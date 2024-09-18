@@ -23,11 +23,24 @@ void print_linked_list(struct LinkedList* list) {
 int add_to_linked_list(struct LinkedList* list, int value) {
     struct Node* current = list->head;
 
+    if (current == NULL) {
+        current = (struct Node*)malloc(sizeof(struct Node));
+        if (!current) { 
+            free_linked_list(list);
+            return 1;
+        }
+        current->value = value;
+        current->next = NULL;
+        list->head = current;
+        return 0;
+    }
+
     while (current->next != NULL) {
         current = current->next;
     }
     current->next = (struct Node*)malloc(sizeof(struct Node));
     if (!current->next) {
+        free_linked_list(list);
         return 1;
     }
     current->next->value = value;
@@ -39,12 +52,17 @@ void delete_linked_list(struct LinkedList* list, int target) {
     struct Node* old = list->head;
     struct Node* next = old->next;
 
-    if (old->value == target) {
-        list->head = next;
+    if (old == NULL) {
         return;
     }
 
-   while (next != NULL) {
+    if (old->value == target) {
+        list->head = next;
+        free(old);
+        return;
+    }
+
+    while (next != NULL) {
         if (next->value == target) {
             struct Node* toFree = next;
             old->next = next->next;
@@ -88,27 +106,26 @@ struct LinkedList* construct_linked_list (int *arr, int size) {
         return NULL;
     }
 
-    // initialize the root
-    list->head = (struct Node *)malloc(sizeof(struct Node));
-    if (!list->head) {
-        return NULL;
-    }
+    list->head = NULL;
+    struct Node* current = NULL;
 
-    // current node
-    struct Node* current = list->head;
-    current->value = arr[0];
-    
-    for (int i = 1; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         struct Node* newNode = (struct Node *)malloc(sizeof(struct Node));
         if (!newNode) {
             free_linked_list(list);
-            free(list);
             return NULL;
         }
+        
         newNode->value = arr[i];
-        newNode->next = NULL;
-        current->next = newNode;
-        current = newNode;
+        newNode-> next = NULL;
+
+        if (list->head == NULL) {
+            list->head = newNode;
+            current = newNode;
+        } else {
+            current->next = newNode;
+            current = newNode;
+        }
     }
     
     // init functions
@@ -133,7 +150,7 @@ void add_one_to_linked_list(struct Node* n) {
     n->value++;
 }
 
-void handle_error(char str[]) {
+int handle_error(char str[]) {
     printf("%s\n", str);
-    exit(EXIT_FAILURE);
+    return 1;
 }
