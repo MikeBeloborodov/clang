@@ -1,12 +1,11 @@
 #include <winsock2.h>
-#include <winsock.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 
-#define RESPONSE_BUF_SIZE 1024
+#define RESPONSE_BUF_SIZE 4096
 
-int handle_error(char* error_msg, int error_code, SOCKET socket);
+int handle_error(const char* error_msg, int error_code, SOCKET socket);
 
 int main() {
     // initializing WSAStartup to use winsock
@@ -38,42 +37,59 @@ int main() {
     size_t request_length = sizeof(request);
 
     DWORD sendBytes;
+    DWORD flagsSend = 0;
     WSABUF requestBuff;
     requestBuff.len = request_length;
     requestBuff.buf = (unsigned char*)request;
-    int wsa_send_err = WSASend(sock, &requestBuff, 1, &sendBytes, 0, NULL, NULL);
+    int wsa_send_err = WSASend(sock, &requestBuff, 1, &sendBytes, flagsSend, NULL, NULL);
     if (wsa_send_err != 0) {
         return handle_error("Error during WSASend", wsa_send_err, sock);
     }
+    if (sendBytes != request_length) {
+        return handle_error("Request was not send fully", 1, sock);
+    }
     
+
+
+    // prepare to save data to a file
+    FILE *file;
+    file = fopen("data.txt", "wb");
+    if (file == NULL) {
+        return handle_error("Error during opening file", 1, sock);
+    }
+
     // recieve http response
-    int wsarecv_err;
     unsigned char respByteArr[RESPONSE_BUF_SIZE];
-    DWORD recvBytes, flags;
+    DWORD recvBytes;
+    DWORD flagsRecv = 0;
     WSABUF responseBuff;
     responseBuff.len = RESPONSE_BUF_SIZE;
-    responseBuff.buf = (char*)respByteArr;
+    responseBuff.buf = respByteArr;
 
     while (true) {
-        wsarecv_err = WSARecv(sock, &responseBuff, 1, &recvBytes, &flags, NULL, NULL);
+        int wsarecv_err = WSARecv(sock, &responseBuff, 1, &recvBytes, &flagsRecv, NULL, NULL);
         if (wsarecv_err != 0) {
             return handle_error("Error during WSARecv", WSAGetLastError(), sock);
         }
 
-        printf("%s\n", responseBuff.buf);
-
         if (recvBytes == 0) {
             break;
+        }
+        respByteArr[recvBytes] = '\0';
+        int file_error = fputs(respByteArr, file);
+        if (file_error == EOF) {
+            return handle_error("Error during saving file", file_error, sock);
         }
     }
 
     // cleaning and closing the socket
     closesocket(sock);
     WSACleanup();
+    fclose(file);
     return 0;
 }
 
-int handle_error(char* error_msg, int error_code, SOCKET socket) {
+int handle_error(const char* error_msg, int error_code, SOCKET socket) {
     printf("%s, code: %d", error_msg, error_code);
     if (socket != 0) {
         closesocket(socket);
