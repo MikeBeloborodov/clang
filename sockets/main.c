@@ -5,7 +5,7 @@
 
 #define RESPONSE_BUF_SIZE 4096
 
-int handle_error(const char* error_msg, int error_code, SOCKET socket);
+int handle_error(const char* error_msg, int error_code, SOCKET socket, FILE* file);
 
 int main() {
     // initializing WSAStartup to use winsock
@@ -13,13 +13,13 @@ int main() {
     WSADATA wsadata;
     int wsa_error = WSAStartup(verreq, &wsadata);
     if (wsa_error != 0) {
-        return handle_error("Error during WSAStartup", wsa_error, 0);
+        return handle_error("Error during WSAStartup", wsa_error, 0, NULL);
     }
 
     // creating a socket
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock == INVALID_SOCKET) {
-        return handle_error("Error during socket creation", WSAGetLastError(), sock);
+        return handle_error("Error during socket creation", WSAGetLastError(), sock, NULL);
     }
 
     // connecting the socket
@@ -29,7 +29,7 @@ int main() {
     clientService.sin_port = htons(80);
     int conn_err = connect(sock, (SOCKADDR*) &clientService, sizeof(clientService));
     if (conn_err != 0) {
-        return handle_error("Error during socket connection", WSAGetLastError(), sock);
+        return handle_error("Error during socket connection", WSAGetLastError(), sock, NULL);
     }
 
     // send http request
@@ -43,19 +43,17 @@ int main() {
     requestBuff.buf = (unsigned char*)request;
     int wsa_send_err = WSASend(sock, &requestBuff, 1, &sendBytes, flagsSend, NULL, NULL);
     if (wsa_send_err != 0) {
-        return handle_error("Error during WSASend", wsa_send_err, sock);
+        return handle_error("Error during WSASend", wsa_send_err, sock, NULL);
     }
     if (sendBytes != request_length) {
-        return handle_error("Request was not send fully", 1, sock);
+        return handle_error("Request was not send fully", 1, sock, NULL);
     }
     
-
-
     // prepare to save data to a file
     FILE *file;
     file = fopen("data.txt", "wb");
     if (file == NULL) {
-        return handle_error("Error during opening file", 1, sock);
+        return handle_error("Error during opening file", 1, sock, file);
     }
 
     // recieve http response
@@ -69,7 +67,7 @@ int main() {
     while (true) {
         int wsarecv_err = WSARecv(sock, &responseBuff, 1, &recvBytes, &flagsRecv, NULL, NULL);
         if (wsarecv_err != 0) {
-            return handle_error("Error during WSARecv", WSAGetLastError(), sock);
+            return handle_error("Error during WSARecv", WSAGetLastError(), sock, NULL);
         }
 
         if (recvBytes == 0) {
@@ -78,7 +76,7 @@ int main() {
         respByteArr[recvBytes] = '\0';
         int file_error = fputs(respByteArr, file);
         if (file_error == EOF) {
-            return handle_error("Error during saving file", file_error, sock);
+            return handle_error("Error during saving file", file_error, sock, file);
         }
     }
 
@@ -89,10 +87,13 @@ int main() {
     return 0;
 }
 
-int handle_error(const char* error_msg, int error_code, SOCKET socket) {
+int handle_error(const char* error_msg, int error_code, SOCKET socket, FILE* file) {
     printf("%s, code: %d", error_msg, error_code);
     if (socket != 0) {
         closesocket(socket);
+    }
+    if (file != NULL) {
+        fclose(file);
     }
     WSACleanup();
     return 1;
